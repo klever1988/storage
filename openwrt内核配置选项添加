@@ -1,0 +1,36 @@
+摘自：http://blog.csdn.net/weiniliuchao/article/details/50295527
+
+增加内核配置选项
+
+openwrt的.config文件中，关于内核的选项都是形如CONFIG_KERNEL_*（由关键字kernel）。在添加内核选项的时候，要在配置项前添加CONFIG_KERNEL_头。
+
+上述添加方法是对于内核中已经存在的选项的添加方法（目前系统支持的内核配置选项可查看文件config/Config-kernel.in）。若目前系统没有该选项，需按照如下方法添加才可使选项生效。
+
+1）  .config;   在此文件中配置CONFIG_KERNEL_选项
+
+2）  config/Config-kernel.in；  在此文件中添加相关配置项的选择 
+
+openwrt的.config和kernel中的.config之间的联系
+
+Make defconfig之后会执行scripts/config/conf --defconfig=.config Config.in    （include/toplevel.mk）
+
+conf主要是将Config.in中的各个文件夹中的Config.in(Config-build.in Config-devel.in Config-image.in Config-kernel.in)选项全部读取出来，放到一个表中。然后将.config中的选项逐个的与链表中各值对比。相同，则保存在一个叫作.tmp.xxxx(进程号)的文件中。当全部比对完成以后，将.config更名为.config.old ，将.tmp.xxxx更名为.config。此时openwrt配置选项加载完成。
+
+之后执行kernel的配置选项加载：  （include/kernel-defaults.mk）
+
+scripts/kconfig.pl  +generic/config-3.10 mt7620/config-3.10 > .config.target
+
+就是将generic和 mt7620中的config-3.10中的内核选项融合 添加到.config.target文件中
+
+awk'/^(#[[:space:]]+)?CONFIG_KERNEL/{sub("CONFIG_KERNEL_","CONFIG_");print}'trunk/.config >> linux-3.10.14-p112871/.config.target
+
+此处将openwrt.config中有关内核选项去掉KERNEL_关键字后添加到.config.target中去。
+
+metadata.pl kconfig tmp/.packageinfotrunk/.config linux-3.10.14-p112871/.config.override
+
+kconfig.pl 'm+' '+'linux-3.10.14-p112871/.config.target /dev/nulllinux-3.10.14-p112871/.config.override > linux-3.10.14-p112871/.config
+
+mv linux-3.10.14-p112871/.configlinux-3.10.14-p112871/.config.old
+
+grep -v INITRAMFS .config.old > .config
+
