@@ -1,0 +1,47 @@
+1；将openwrt14.07中的内核版本从3.10.49更换成3.10.102
+
+a；更改文件include/kernel-version.mk
+
+b；修改文件​target/linux/<路由器架构> 下的Makefile，将KERNEL_PATCHVER:= ××那一行的xx改成自己希望的版本系列即可,但不能具体为3.10.102，应为3.10。不然会报错。
+
+c;修改target/linux/generic/patches-3.10中的文件。
+
+在这个网址中可以找到相关补丁： https://dev.openwrt.org/browser/trunk/target/linux?rev=44800&order=name
+
+d；修改target/linux/ramips/patches-3.10中的文件，ramips即make menuconfig中选中的platform。
+
+e;在target/linux/generic/中添加config-3.10
+
+f；在target/linux/ramips/mt7620a中添加config-3.10。（mt7620a为编译时选择的开发板，若更新为内核3.14，则添加config-3.14）
+
+g:检查target/linux/generic/files中的文件有没有被修改。
+
+h；更改package/kernel中的文件
+
+i；还要修改include/中的mk文件
+
+
+
+更换内核版本后，可能需要运行make kernel_menuconfig进行设置。
+
+有可能packet/文件中与新的linux内核不相符。将来程序若出bug了，可能与只更换了linux内核版本，而没有更新packet/中的文件有关。
+
+
+
+错误处理：
+
+1；编译时出现错误：Parse error at /home/jing/openwrt/openwrt1407/scripts/kconfig.pl line 137.
+
+修改文件​target/linux/<路由器架构> 下的Makefile，其中KERNEL_PATCHVER:=3.18，不能是KERNEL_PATCHVER:=3.18.36
+
+
+
+2；出现Package kmod-ipt-conntrack is missing dependencies for the following libraries:
+nf_conntrack.ko 错误时
+
+可以进行make kernel_menuconfig进行配置试试
+
+
+————————————————
+版权声明：本文为CSDN博主「flexman09」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/flexman09/article/details/51862858
