@@ -1,0 +1,83 @@
+openwrt的patch机制非常不错，应用的很广泛，从内核到应用都有涉及，patch机制也方便了多个用户之间的功能同步及差异控制。
+
+在openwrt上常用的patch生成及修改方式为QUILT工具，应用此工具可以修改现有补丁以及生成新的补丁，但个人认为也有一定局限性；
+
+以普通的开发方式来看，一般我们都会在build_dir中修改现有代码，然后重新编译，再测试功能直到功能OK。
+
+在此过程中，我们会使用自己熟悉的编辑工具来编辑文件，如Notepad++，VIM等，但quilt生成补丁前，需要使用quilt edit文件，
+
+这导致了一些不方便，不能让我们随时随处随意的修改源文件。
+
+下面我将介绍另一种patch制作方式，将不受此局限，即使用Linux自带的diff命令即可；
+在编辑修改源文件之前，只需要保存一份我们要修改的源文件用于对比即可。
+
+以kernel加载4G模块来举例，一般我们会在option.c中添加4G模块的VID,PID
+
+第一，保存原有的option.c文件
+
+第二，修改option.c，添加我们的4G模块的VID，PID
+
+第三，重命名文件为option_new.c，此处主要是为了方便diff，编译时还是需要使用option.c文件名的
+
+修改好了文件，下面 开始制作patch，执行一条指令即可：
+diff -ruN option.c option_new.c > 999-kernel-option-add-new-dev.patch
+我生成的patch内容如下：
+
+--- option.c	2018-09-04 17:14:32.000000000 +0800
++++ option_new.c	2018-06-12 14:56:55.000000000 +0800
+@@ -372,8 +372,11 @@
+ /* SpeedUp SU9800 usb 3g modem */
+ #define SPEEDUP_PRODUCT_SU9800			0x9800
+ 
+-/* LongShang  U8300W  LET modem */
+-#define LONGSHANG_PRODUCT_U8300W         0x9b05
++/* LongShang  U8300C/W  LET modem */
++#define LONGSHANG_PRODUCT_U8300CW         0x9b05
++
++/* LongShang  U9300C/W  LET modem */
++#define LONGSHANG_PRODUCT_U9300CW         0x9b3c
+ 
+ /* Haier products */
+ #define HAIER_VENDOR_ID				0x201e
+@@ -647,6 +650,7 @@
+ };
+ 
+ static const struct usb_device_id option_ids[] = {
++	{ USB_DEVICE(0x2C7C, 0x0125) }, /* Quectel EC25 */
+ 	{ USB_DEVICE(ZTE_VENDOR_ID, ZTE_PRODUCT_MZ382) },
+ 	{ USB_DEVICE(OPTION_VENDOR_ID, OPTION_PRODUCT_COLT) },
+ 	{ USB_DEVICE(OPTION_VENDOR_ID, OPTION_PRODUCT_RICOLA) },
+@@ -1699,7 +1703,10 @@
+ 	{ USB_DEVICE_INTERFACE_CLASS(LONGCHEER_VENDOR_ID, SPEEDUP_PRODUCT_SU9800, 0xff) },
+ 	{ USB_DEVICE(LONGCHEER_VENDOR_ID, ZOOM_PRODUCT_4597) },
+ 	{ USB_DEVICE(LONGCHEER_VENDOR_ID, IBALL_3_5G_CONNECT) },
+-	{ USB_DEVICE(LONGCHEER_VENDOR_ID, LONGSHANG_PRODUCT_U8300W) },
++	{ USB_DEVICE(LONGCHEER_VENDOR_ID, LONGSHANG_PRODUCT_U8300CW),
++		.driver_info = (kernel_ulong_t)&net_intf4_blacklist },
++	{ USB_DEVICE(LONGCHEER_VENDOR_ID, LONGSHANG_PRODUCT_U9300CW),
++		.driver_info = (kernel_ulong_t)&net_intf4_blacklist },
+ 	{ USB_DEVICE(HAIER_VENDOR_ID, HAIER_PRODUCT_CE100) },
+ 	{ USB_DEVICE_AND_INTERFACE_INFO(HAIER_VENDOR_ID, HAIER_PRODUCT_CE81B, 0xff, 0xff, 0xff) },
+ 	/* Pirelli  */
+@@ -1872,6 +1879,7 @@
+ #ifdef CONFIG_PM
+ 	.suspend           = usb_wwan_suspend,
+ 	.resume            = usb_wwan_resume,
++	.reset_resume      = usb_wwan_resume, //for EC25
+ #endif
+ };
+ 
+接着，只需要修改头两行文件的路径即可
+
+--- a/drivers/usb/serial/option.c	2018-09-04 17:14:32.000000000 +0800
++++ b/drivers/usb/serial/option.c	2018-06-12 14:56:55.000000000 +0800
+将文件路径设为kernel下的绝对路径即可，加上前缀a表示源文件，b表示修改之后的文件
+
+将此patch拷贝到target/linux/对应的board下即可，或者发布出去供其他人员使用，前提要是同一个内核版本
+
+ 
+
+
+————————————————
+版权声明：本文为CSDN博主「WindLOR」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/wind0419/article/details/82996738
